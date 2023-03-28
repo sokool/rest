@@ -23,6 +23,9 @@ type Request struct {
 func (r *Request) Body(to any) error {
 	defer r.Request.Body.Close()
 	if err := json.NewDecoder(r.Request.Body).Decode(to); err != nil && err != io.EOF {
+		if j, ok := to.(json.Unmarshaler); ok {
+			return j.UnmarshalJSON([]byte{})
+		}
 		return err
 	}
 
