@@ -113,5 +113,10 @@ func (r *Request) Header(name string, to ...*string) bool {
 }
 
 func (r *Request) Method(names ...string) bool {
-	return str.IsOneOf(r.Request.Method, names...)
+	for i := range names {
+		if names[i] == r.Request.Method {
+			return true
+		}
+	}
+	return false
 }

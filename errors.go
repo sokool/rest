@@ -24,8 +24,11 @@ func Errors(c *gin.Context) {
 	var t string
 	var s = http.StatusBadRequest
 
-	if str.Contains(m, "access denied", "access forbidden") {
-		s = http.StatusForbidden
+	for _, e := range []string{"access denied", "access forbidden"} {
+		if strings.Contains(m, e) {
+			s = http.StatusForbidden
+			break
+		}
 	}
 
 	switch p := strings.Split(m, ":"); {
