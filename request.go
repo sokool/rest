@@ -22,13 +22,14 @@ type Request struct {
 
 func (r *Request) Body(to any) error {
 	defer r.Request.Body.Close()
-	if err := json.NewDecoder(r.Request.Body).Decode(to); err != nil && err != io.EOF {
+	switch err := json.NewDecoder(r.Request.Body).Decode(to); {
+	case err == io.EOF:
 		if j, ok := to.(json.Unmarshaler); ok {
 			return j.UnmarshalJSON([]byte{})
 		}
+	case err != nil:
 		return err
 	}
-
 	return nil
 }
 
