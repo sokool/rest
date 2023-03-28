@@ -2,9 +2,10 @@ package rest
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"reflect"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Router[S Session] struct {

@@ -2,11 +2,12 @@ package rest
 
 import (
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/stoewer/go-strcase"
 	"net/http"
 	"reflect"
 	"regexp"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stoewer/go-strcase"
 )
 
 func JSONResponse(c *gin.Context) {

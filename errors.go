@@ -2,10 +2,10 @@ package rest
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"go-rl/str"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 func Errors(c *gin.Context) {

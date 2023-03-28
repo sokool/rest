@@ -1,9 +1,10 @@
 package rest
 
 import (
-	"github.com/gin-gonic/gin"
-	"go-rl/view"
 	"reflect"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sokool/domain/view"
 )
 
 func Renderer(c *gin.Context) {
