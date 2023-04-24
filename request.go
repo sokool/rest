@@ -1,26 +1,38 @@
 package rest
 
 import (
+	"context"
 	"encoding"
 	"encoding/json"
 	"io"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/julienschmidt/httprouter"
+	"github.com/sokool/domain"
 )
 
-type Request struct {
-	*http.Request
+type Request[S Session] struct {
+	Session  S
+	Request  *http.Request
 	Response http.ResponseWriter
-	gin      *gin.Context
-	errors   []error
 }
 
-func (r *Request) Body(to any) error {
+func NewRequest[S Session](s NewSession[S], w http.ResponseWriter, r *http.Request) (*Request[S], error) {
+	f := &Request[S]{
+		Request:  r,
+		Response: w,
+	}
+	var err error
+	if f.Session, err = s(f.Response, f.Request); err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
+func (r *Request[S]) Body(to any) error {
 	defer r.Request.Body.Close()
 	switch err := json.NewDecoder(r.Request.Body).Decode(to); {
 	case err == io.EOF:
@@ -33,94 +45,95 @@ func (r *Request) Body(to any) error {
 	return nil
 }
 
-func (r *Request) Value(name string, to any) error {
-	from, ok := r.gin.Get(name)
-	if !ok {
-		return nil
+func (r *Request[S]) Param(name string, to ...any) (s string, err error) {
+	if s = httprouter.ParamsFromContext(r.Request.Context()).ByName(name); s == "" {
+		return s, ErrValueNotFound
 	}
-
-	tv := reflect.ValueOf(to)
-	if k := tv.Kind(); k != reflect.Pointer {
-		return Err("request", "%s value need to be read by reference, %s given", name, k)
-	}
-	tv = tv.Elem()
-
-	fv := reflect.ValueOf(from)
-	if tv.Type() != fv.Type() {
-		return Err("request", "%s value type mismatch - expected %s but %s has been given", name, fv.Type(), tv.Type())
-	}
-
-	tv.Set(fv)
-
-	return nil
-}
-
-func (r *Request) Param(name string, to any) (err error) {
-	s := r.gin.Param(name)
-	if s == "" {
-		return Err("request", "%s param not found", name)
-	}
-	switch v := to.(type) {
-	case *string:
-		if v == nil {
-			return Err("request", "reading %s string parameter failed", name)
-		}
-		*v = s
-	case encoding.TextUnmarshaler:
-		err = v.UnmarshalText([]byte(s))
-	default:
-		err = json.Unmarshal([]byte(s), to)
-	}
-	if err != nil {
-		err = Err("request", "%s param decode failed %w", name, err)
-	}
-	return
-}
-
-func (r *Request) Query(name string, to any) (err error) {
-	var s string
-	if s = r.Request.URL.Query().Get(name); s == "" {
-		return
-	}
-
-	switch v := to.(type) {
-	case *string:
-		*v = s
-	case *[]string:
-		*v = strings.Split(s, "|")
-	case *int:
-		var n float64
-		n, err = strconv.ParseFloat(s, 64)
-		*v = int(n)
-	case *float64:
-		var n float64
-		n, err = strconv.ParseFloat(s, 64)
-		*v = n
-	case *time.Time:
-		*v, err = time.Parse(time.RFC3339, s)
-	case encoding.TextUnmarshaler:
-		err = v.UnmarshalText([]byte(s))
-	default:
-		if err = r.gin.BindQuery(to); err != nil {
-			err = Err("request", "param decode failed %w", err)
-		}
-	}
-	return
-}
-
-func (r *Request) Header(name string, to ...*string) bool {
-	s := r.Request.Header.Get(name)
 	if len(to) != 0 {
-		*to[0] = s
+		if err = r.decode(s, to[0]); err != nil {
+			return s, Err("decode failed %w", err)
+		}
 	}
-	return s != ""
+	return
 }
 
-func (r *Request) Method(names ...string) bool {
+func (r *Request[S]) Query(name string, to ...any) (s string, err error) {
+	if s = r.Request.URL.Query().Get(name); s == "" {
+		return s, ErrValueNotFound
+	}
+	if len(to) != 0 {
+		if err = r.decode(s, to[0]); err != nil {
+			return s, Err("decode failed %w", err)
+		}
+	}
+	return
+}
+
+func (r *Request[S]) Header(name string, to ...any) (s string, err error) {
+	if s = r.Request.Header.Get(name); s == "" {
+		return s, ErrValueNotFound
+	}
+	if len(to) != 0 {
+		if err = r.decode(s, to[0]); err != nil {
+			return s, Err("decode failed %w", err)
+		}
+	}
+	return s, nil
+}
+
+func (r *Request[S]) Method(names ...string) bool {
 	for i := range names {
 		if names[i] == r.Request.Method {
 			return true
 		}
 	}
 	return false
+}
+
+func (r *Request[S]) decode(from string, to any) error {
+	var err error
+	switch v := to.(type) {
+	case *string:
+		*v = from
+	case *[]string:
+		*v = strings.Split(from, "|")
+	case *int:
+		var n int64
+		n, err = strconv.ParseInt(from, 2, 64)
+		*v = int(n)
+	case *float64:
+		var n float64
+		n, err = strconv.ParseFloat(from, 64)
+		*v = n
+	case encoding.TextUnmarshaler:
+		err = v.UnmarshalText([]byte(from))
+	case json.Unmarshaler:
+		err = v.UnmarshalJSON([]byte(from))
+	default:
+		err = json.Unmarshal([]byte(from), to)
+	}
+
+	return err
+}
+
+var Err = domain.Errorf
+
+var ErrValueNotFound = Err("rest: value not found")
+
+func Read[T any](r *http.Request, key string) T {
+	v := r.Context().Value(key)
+	var ok bool
+	var t T
+	if v == nil {
+		return t
+	}
+	if t, ok = v.(T); ok {
+		return t
+	}
+	return t
+}
+
+func Write[T any](key string, v T, r *http.Request) {
+	x := r.WithContext(context.WithValue(r.Context(), key, v))
+	*r = *x
 }

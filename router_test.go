@@ -1,0 +1,75 @@
+package rest_test
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	. "github.com/sokool/rest"
+)
+
+func TestRouter_ExecutionOrder(t *testing.T) {
+	type _case struct {
+		description string
+		register    *Router[Token]
+		method      string
+		path        string
+		headers     string
+	}
+
+	m := func(s string) Middleware {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("string", w.Header().Get("string")+" "+s+":before")
+				next.ServeHTTP(w, r)
+				w.Header().Set("string", w.Header().Get("string")+" "+s+":after")
+			})
+		}
+	}
+	h := func(s string) Handler[Token] {
+		return func(r *Request[Token]) (any, error) {
+			r.Response.Header().Set("string", r.Response.Header().Get("string")+" "+s)
+			return s, nil
+		}
+	}
+
+	r := NewRouter()
+
+	cases := []_case{
+		{
+			"no middlewares",
+			r.Path("/a").Handle("", "GET", h("hello")),
+			"GET", "/a?test=abc",
+			"hello",
+		},
+		{
+			"one middleware on path",
+			r.Path("/b", m("a#1")).Handle("", "GET", h("orange")),
+			"GET", "/b",
+			"a#1:before orange a#1:after",
+		},
+		{
+			"one middleware on path and handler",
+			r.Path("/c", m("a#1")).Handle("", "GET", h("orange"), m("b#1")),
+			"GET", "/c",
+			"a#1:before b#1:before orange b#1:after a#1:after",
+		},
+		{
+			"multiple middlewares on paths and handler",
+			r.Path("/apps", m("apps#1")).Path("/tools", m("tool#1"), m("tool#2")).Handle("", "GET", h("handler"), m("get#1")),
+			"GET", "/apps/tools",
+			"apps#1:before tool#1:before tool#2:before get#1:before handler get#1:after tool#2:after tool#1:after apps#1:after",
+		},
+	}
+
+	s := httptest.NewServer(r)
+	defer s.Close()
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			res, _ := http.Get(s.URL + c.path)
+			if h := res.Header.Get("string"); h != c.headers {
+				t.Fatalf("\nexpected `%s`\n     got `%s`", c.headers, h)
+			}
+		})
+	}
+}
