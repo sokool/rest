@@ -7,11 +7,10 @@ import (
 )
 
 type Router[S Session] struct {
-	http     *httprouter.Router
-	sessions NewSession[S]
-
-	path       string
+	http       *httprouter.Router
+	sessions   NewSession[S]
 	middleware []Middleware
+	path       string
 }
 
 func NewRouter(m ...Middleware) *Router[Token] {

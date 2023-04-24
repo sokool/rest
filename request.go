@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/sokool/domain"
+	"github.com/sokool/errors"
 )
 
 type Request[S Session] struct {
@@ -116,7 +116,7 @@ func (r *Request[S]) decode(from string, to any) error {
 	return err
 }
 
-var Err = domain.Errorf
+var Err = errors.Errorf
 
 var ErrValueNotFound = Err("rest: value not found")
 
