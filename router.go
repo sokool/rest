@@ -7,37 +7,29 @@ import (
 )
 
 type Router[S Session] struct {
-	http       *httprouter.Router
-	sessions   NewSession[S]
-	middleware []Middleware
 	path       string
+	http       *httprouter.Router
+	sessions   Sessions[S]
+	middleware []Middleware
 }
 
-func NewRouter(m ...Middleware) *Router[Token] {
-	return NewSessionRouter(NewToken, m...)
-}
-
-func NewSessionRouter[S Session](ns NewSession[S], m ...Middleware) *Router[S] {
-	return &Router[S]{http: httprouter.New(), sessions: ns, middleware: m}
+func NewRouter[S Session](s Sessions[S], m ...Middleware) *Router[S] {
+	return &Router[S]{http: httprouter.New(), sessions: s, middleware: m}
 }
 
 func (r *Router[S]) Path(name string, m ...Middleware) *Router[S] {
 	return &Router[S]{
+		path:       r.path + name,
 		http:       r.http,
 		sessions:   r.sessions,
-		path:       r.path + name,
 		middleware: append(r.middleware, m...),
 	}
 }
 
-func (r *Router[S]) Handle(name, method string, h Handler[S], m ...Middleware) *Router[S] {
-	n := NewHTTPHandler(r.sessions, h)
+func (r *Router[S]) Handle(name, method string, e Endpoint[S], m ...Middleware) *Router[S] {
 	m = append(r.middleware, m...)
-	for i := len(m) - 1; i >= 0; i-- {
-		n = m[i](n)
-	}
-
-	r.http.Handler(method, r.path+name, n)
+	h := NewHandler[S](r.sessions, e).Apply(m...)
+	r.http.Handler(method, r.path+name, h)
 
 	return r
 }

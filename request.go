@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -19,16 +20,13 @@ type Request[S Session] struct {
 	Response http.ResponseWriter
 }
 
-func NewRequest[S Session](s NewSession[S], w http.ResponseWriter, r *http.Request) (*Request[S], error) {
-	f := &Request[S]{
-		Request:  r,
-		Response: w,
-	}
-	var err error
-	if f.Session, err = s(f.Response, f.Request); err != nil {
-		return nil, err
-	}
+func NewRequest[S Session](w http.ResponseWriter, r *http.Request) (*Request[S], error) {
+	f := &Request[S]{Request: r, Response: w}
+	x := reflect.New(reflect.TypeOf(f.Session)).Interface()
 
+	f.Session = x.(S)
+
+	//err := f.Session.UnmarshalHTTP(r)
 	return f, nil
 }
 
@@ -120,20 +118,20 @@ var Err = errors.Errorf
 
 var ErrValueNotFound = Err("rest: value not found")
 
-func Read[T any](r *http.Request, key string) T {
-	v := r.Context().Value(key)
+func Read[T any](from *http.Request, key string) (T, bool) {
 	var ok bool
 	var t T
-	if v == nil {
-		return t
+	var v = from.Context().Value(key)
+	if v == nil || reflect.ValueOf(v).IsZero() {
+		return t, false
 	}
 	if t, ok = v.(T); ok {
-		return t
+		return t, true
 	}
-	return t
+	return t, false
 }
 
-func Write[T any](key string, v T, r *http.Request) {
-	x := r.WithContext(context.WithValue(r.Context(), key, v))
-	*r = *x
+func Write[T any](key string, v T, to *http.Request) {
+	x := to.WithContext(context.WithValue(to.Context(), key, v))
+	*to = *x
 }

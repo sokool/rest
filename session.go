@@ -1,17 +1,30 @@
 package rest
 
-import "net/http"
+import (
+	"net/http"
+)
 
+type Sessions[S Session] interface {
+	Read(r *http.Request) (S, error)
+}
 type Session interface {
 	IsExpired() bool
 }
 
-type NewSession[S Session] func(http.ResponseWriter, *http.Request) (S, error)
+type Tokens struct{}
+
+func (t *Tokens) Read(r *http.Request) (Token, error) {
+	s := r.Header.Get("Authorization")
+	return NewToken(s)
+}
 
 type Token string
 
-func NewToken(w http.ResponseWriter, r *http.Request) (Token, error) {
-	return Token(r.Header.Get("Authorization")), nil
+func NewToken(s string) (Token, error) {
+	t := Token(s)
+	return t, nil
 }
 
-func (s Token) IsExpired() bool { return false }
+func (s Token) IsExpired() bool {
+	return false
+}

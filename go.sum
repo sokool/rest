@@ -5,8 +5,8 @@ github.com/julienschmidt/httprouter v1.3.0 h1:U0609e9tgbseu3rBINet9P48AI/D3oJs4d
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/sokool/errors v0.0.0-20230424092930-872a69622fe7 h1:huzlbxZES/Cg0n1AHJL4V5oi/+caUE2AJcB246vBQ9s=
-github.com/sokool/errors v0.0.0-20230424092930-872a69622fe7/go.mod h1:89o/Cd6TRCcgJlIbWcxqP2XeXfGNolC8LM9kOHXXtdQ=
+github.com/sokool/errors v1.0.0 h1:j1mhix1E9xzqyxR9t2FpjTJJ4VGFy3JRQlPGp8SQ0NY=
+github.com/sokool/errors v1.0.0/go.mod h1:H6AwpMbYC1JzW533JCRUvIp2kBM1RQI3S9M1e1tHJQU=
 github.com/sokool/log v1.0.3 h1:ZO8u9H8AMGX0H4XcQPGSZU3NYpZHTQ2zu22e8/kPcKE=
 github.com/sokool/log v1.0.3/go.mod h1:hwCNkB3o06M5Igdr+1xrnPKfPQ1S+twRtcAG9gazr9E=
 github.com/stoewer/go-strcase v1.3.0 h1:g0eASXYtp+yvN9fK8sH94oCIk0fau9uV1/ZdJ0AVEzs=

@@ -18,22 +18,22 @@ func TestRouter_ExecutionOrder(t *testing.T) {
 	}
 
 	m := func(s string) Middleware {
-		return func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return func(next http.Handler) http.HandlerFunc {
+			return func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("string", w.Header().Get("string")+" "+s+":before")
 				next.ServeHTTP(w, r)
 				w.Header().Set("string", w.Header().Get("string")+" "+s+":after")
-			})
+			}
 		}
 	}
-	h := func(s string) Handler[Token] {
+	h := func(s string) Endpoint[Token] {
 		return func(r *Request[Token]) (any, error) {
 			r.Response.Header().Set("string", r.Response.Header().Get("string")+" "+s)
 			return s, nil
 		}
 	}
 
-	r := NewRouter()
+	r := NewRouter[Token](&Tokens{})
 
 	cases := []_case{
 		{

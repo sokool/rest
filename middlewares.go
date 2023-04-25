@@ -15,18 +15,18 @@ import (
 	"github.com/stoewer/go-strcase"
 )
 
-type Middleware func(http.Handler) http.Handler
+type Middleware func(http.Handler) http.HandlerFunc
 
-func JSON(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func JSON(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
-		err := Read[error](r, responseErr)
+		err, _ := Read[error](r, responseErr)
 		if err != nil {
 			return
 		}
 
-		bdy := Read[any](r, responseBody)
-		if bdy == nil {
+		bdy, ok := Read[any](r, responseBody)
+		if !ok {
 			return
 		}
 
@@ -44,15 +44,15 @@ func JSON(h http.Handler) http.Handler {
 		if err = json.NewEncoder(w).Encode(&jsonStyle{s, bdy}); err != nil {
 			fmt.Println("damn, failed", err)
 		}
-	})
+	}
 }
 
-func Errors(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func Errors(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
 
-		err := Read[error](r, responseErr)
-		if err == nil {
+		err, ok := Read[error](r, responseErr)
+		if !ok || err == nil {
 			return
 		}
 
@@ -76,7 +76,7 @@ func Errors(h http.Handler) http.Handler {
 		w.WriteHeader(s)
 
 		fmt.Fprintf(w, `{"message":"%s", "type": "%s"}`, strings.TrimSpace(m), strings.TrimSpace(t))
-	})
+	}
 }
 
 func Logger(verbose bool, w ...io.Writer) Middleware {
@@ -86,37 +86,45 @@ func Logger(verbose bool, w ...io.Writer) Middleware {
 		Options(log.Date | log.Time | log.Type | log.Type | log.Colors).
 		Verbose(verbose)
 
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(h http.Handler) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
 			n := time.Now()
 			h.ServeHTTP(w, r)
 			log.Printf("%s %s in %s", r.Method, r.URL, time.Since(n))
-		})
+		}
 	}
 }
 
-//func Renderer(c *gin.Context) {
-//	c.Next()
-//	var p any
-//	var r view.Renderer
-//	var ok bool
-//	if p, ok = c.Get(responseBody); !ok {
-//		return
+//func Renderer(h http.Handler) http.Handler {
+//	type renderer interface {
+//		Render(types ...string) (any, error)
 //	}
-//	if p == nil || p == "" || reflect.ValueOf(p).IsZero() {
-//		return
-//	}
-//	if r, ok = p.(view.Renderer); !ok {
-//		return
-//	}
+//	return http.HandlerFunc(func(hw http.ResponseWriter, hr *http.Request) {
+//		h.ServeHTTP(hw, hr)
 //
-//	b, err := view.JSON(r, c.Request.Header.Values("render")...)
-//	if err != nil {
-//		c.Set(responseError, err)
-//		return
-//	}
+//		var r renderer
+//		var ok bool
 //
-//	c.Set(responseBody, b.JSON())
+//		if r, ok = Read[renderer](hr, responseBody); !ok {
+//			return
+//		}
+//		//if p == nil || p == "" || reflect.ValueOf(p).IsZero() {
+//		//	return
+//		//}
+//		//if r, ok = p.(view.Renderer); !ok {
+//		//	return
+//		//}
+//
+//		r.Render(hr.Header.Values("render")...)
+//		b, err := view.JSON(r, c.Request.Header.Values("render")...)
+//		if err != nil {
+//			c.Set(responseError, err)
+//			return
+//		}
+//
+//		Write(responseBody)
+//		c.Set(responseBody, b.JSON())
+//	})
 //}
 
 //func Auth(c *gin.Context) {
