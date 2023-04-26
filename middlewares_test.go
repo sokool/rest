@@ -19,22 +19,28 @@ func TestJSON(t *testing.T) {
 
 	cases := []scenario{
 		{
-			"without payload and errors",
+			"without response body and no errors",
 			func(r *Request[Token]) (any, error) { return nil, nil },
 			204,
-			``,
+			`null`,
 		},
 		{
-			"with payload and no errors",
+			"with string response body and no errors",
 			func(r *Request[Token]) (any, error) { return "hello", nil },
 			200,
 			`"hello"`,
 		},
 		{
-			"with error and no payload",
+			"with error and no response body",
 			func(r *Request[Token]) (any, error) { return nil, Err("endpoint#test: %s failed", "request") },
 			400,
-			`{"message":"request failed","name":"endpoint","code":"test"}`,
+			`{"Message":"request failed","Name":"endpoint","Code":"test"}`,
+		},
+		{
+			"with not supported response type and no error",
+			func(r *Request[Token]) (any, error) { return make(chan int), nil },
+			500,
+			`"'chan int' to json decode failed"`,
 		},
 	}
 

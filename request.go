@@ -131,7 +131,7 @@ func Read[T any](from *http.Request, key string) (T, bool) {
 	return t, false
 }
 
-func Write[T any](key string, v T, to *http.Request) {
-	x := to.WithContext(context.WithValue(to.Context(), key, v))
-	*to = *x
+func Write[T any](key string, value T, to *http.Request) {
+	t := to.WithContext(context.WithValue(to.Context(), key, value))
+	*to = *t
 }

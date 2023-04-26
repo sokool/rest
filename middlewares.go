@@ -22,25 +22,44 @@ func JSON(h http.Handler) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 
 		var bdy any
+		var hdr = http.StatusNoContent
 		if err, ok := Read[error](r, responseErr); ok {
-			bdy = err
-			w.WriteHeader(http.StatusBadRequest)
+			bdy, hdr = err, http.StatusBadRequest
 		} else if res, ok := Read[any](r, responseBody); ok {
-			bdy = res
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusNoContent)
-			return
+			bdy, hdr = res, http.StatusOK
 		}
-		s := r.Header.Get("json-style")
-		if s == "" {
-			s = "camel"
+		b, err := json.Marshal(&style{r.Header.Get("json-style"), bdy})
+		if err != nil {
+			b, hdr = []byte(fmt.Sprintf(`"'%T' to json decode failed"`, bdy)), http.StatusInternalServerError
 		}
 
-		if err := json.NewEncoder(w).Encode(&jsonStyle{s, bdy}); err != nil {
-			fmt.Println("damn, failed", err)
-		}
+		w.WriteHeader(hdr)
+		w.Write(b)
 	}
+}
+
+type style struct {
+	name  string
+	value any
+}
+
+func (j *style) MarshalJSON() ([]byte, error) {
+	b, err := json.Marshal(j.value)
+	if err != nil {
+		return nil, err
+	}
+	var f func([]byte) []byte
+	switch j.name {
+	case "camel":
+		f = func(b []byte) []byte { return []byte(strcase.LowerCamelCase(string(b))) }
+	case "snake":
+		f = func(b []byte) []byte { return []byte(strcase.SnakeCase(string(b))) }
+	case "kebab":
+		f = func(b []byte) []byte { return []byte(strcase.KebabCase(string(b))) }
+	default:
+		return b, nil
+	}
+	return words.ReplaceAllFunc(b, f), err
 }
 
 func Errors(h http.Handler) http.HandlerFunc {
@@ -144,27 +163,3 @@ func Logger(verbose bool, w ...io.Writer) Middleware {
 //}
 
 var words = regexp.MustCompile(`\"(\w+)\":`)
-
-type jsonStyle struct {
-	name  string
-	value any
-}
-
-func (j *jsonStyle) MarshalJSON() ([]byte, error) {
-	b, err := json.Marshal(j.value)
-	if err != nil {
-		return nil, err
-	}
-	var f func([]byte) []byte
-	switch j.name {
-	case "camel":
-		f = func(b []byte) []byte { return []byte(strcase.LowerCamelCase(string(b))) }
-	case "snake":
-		f = func(b []byte) []byte { return []byte(strcase.SnakeCase(string(b))) }
-	case "kebab":
-		f = func(b []byte) []byte { return []byte(strcase.KebabCase(string(b))) }
-	default:
-		return b, nil
-	}
-	return words.ReplaceAllFunc(b, f), err
-}
