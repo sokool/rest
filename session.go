@@ -13,6 +13,10 @@ type Session interface {
 
 type Tokens struct{}
 
+func NewTokens() *Tokens {
+	return &Tokens{}
+}
+
 func (t *Tokens) Read(r *http.Request) (Token, error) {
 	s := r.Header.Get("Authorization")
 	return NewToken(s)

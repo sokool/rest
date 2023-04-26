@@ -20,14 +20,14 @@ type Request[S Session] struct {
 	Response http.ResponseWriter
 }
 
-func NewRequest[S Session](w http.ResponseWriter, r *http.Request) (*Request[S], error) {
-	f := &Request[S]{Request: r, Response: w}
-	x := reflect.New(reflect.TypeOf(f.Session)).Interface()
+func NewRequest[S Session](s Sessions[S], w http.ResponseWriter, r *http.Request) (*Request[S], error) {
+	var x = &Request[S]{Request: r, Response: w}
+	var err error
+	if x.Session, err = s.Read(r); err != nil {
+		return nil, err
+	}
 
-	f.Session = x.(S)
-
-	//err := f.Session.UnmarshalHTTP(r)
-	return f, nil
+	return x, nil
 }
 
 func (r *Request[S]) Body(to any) error {

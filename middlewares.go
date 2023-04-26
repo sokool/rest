@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -20,28 +19,25 @@ type Middleware func(http.Handler) http.HandlerFunc
 func JSON(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
-		err, _ := Read[error](r, responseErr)
-		if err != nil {
-			return
-		}
+		w.Header().Set("Content-Type", "application/json")
 
-		bdy, ok := Read[any](r, responseBody)
-		if !ok {
-			return
-		}
-
-		if bdy == nil || bdy == "" || reflect.ValueOf(bdy).IsZero() {
+		var bdy any
+		if err, ok := Read[error](r, responseErr); ok {
+			bdy = err
+			w.WriteHeader(http.StatusBadRequest)
+		} else if res, ok := Read[any](r, responseBody); ok {
+			bdy = res
+			w.WriteHeader(http.StatusOK)
+		} else {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-
 		s := r.Header.Get("json-style")
 		if s == "" {
 			s = "camel"
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err = json.NewEncoder(w).Encode(&jsonStyle{s, bdy}); err != nil {
+		if err := json.NewEncoder(w).Encode(&jsonStyle{s, bdy}); err != nil {
 			fmt.Println("damn, failed", err)
 		}
 	}

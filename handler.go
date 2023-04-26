@@ -4,8 +4,6 @@ import (
 	"net/http"
 )
 
-type Endpoint[S Session] func(*Request[S]) (any, error)
-
 type Handler[S Session] struct {
 	endpoint Endpoint[S]
 	sessions Sessions[S]
@@ -19,14 +17,15 @@ func NewHandler[S Session](s Sessions[S], e Endpoint[S]) *Handler[S] {
 }
 
 func (h *Handler[S]) ServeHTTP(hw http.ResponseWriter, hr *http.Request) {
-	var r = &Request[S]{Request: hr, Response: hw}
+	var r *Request[S]
+	var p any
 	var err error
-	if r.Session, err = h.sessions.Read(hr); err != nil {
+
+	if r, err = NewRequest(h.sessions, hw, hr); err != nil {
 		Write[error](responseErr, err, r.Request)
 		return
 	}
-	p, err := h.endpoint(r)
-	if err != nil {
+	if p, err = h.endpoint(r); err != nil {
 		Write(responseErr, err, r.Request)
 	}
 	if p != nil {
