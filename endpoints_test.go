@@ -1,6 +1,7 @@
 package rest_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -72,4 +73,6 @@ func TestRouter_MiddlewareOrder(t *testing.T) {
 			}
 		})
 	}
+
+	fmt.Println(r)
 }
