@@ -10,35 +10,35 @@ func NewParameters() *Parameters {
 	return new(Parameters)
 }
 
-func (p *Parameters) Query(name string, value any) *Parameters {
-	n := NewParameter("query", name, value)
+func (p *Parameters) Query(name, description string, value ...any) *Parameter {
+	n := NewParameter("query", name, description, value)
 	*p = append(*p, n)
-	return p
+	return n
 }
 
-func (p *Parameters) Path(name string, value any) *Parameters {
-	n := NewParameter("path", name, value)
+func (p *Parameters) Path(name string, value any) *Parameter {
+	n := NewParameter("path", name, "", value)
 	*p = append(*p, n)
-	return p
+	return n
 }
 
-func (p *Parameters) Header(name string, value any) *Parameters {
-	n := NewParameter("header", name, value)
+func (p *Parameters) Header(name string, value any) *Parameter {
+	n := NewParameter("header", name, "", value)
 	*p = append(*p, n)
-	return p
+	return n
 }
 
-func (p *Parameters) Cookie(name string, value any) *Parameters {
-	n := NewParameter("cookie", name, value)
+func (p *Parameters) Cookie(name string, value any) *Parameter {
+	n := NewParameter("cookie", name, "", value)
 	*p = append(*p, n)
-	return p
+	return n
 }
 
 func (p *Parameters) Render(n int) (string, error) {
-	var s string
-	if len(*p) != 0 {
-		s = "parameters:"
+	if len(*p) == 0 {
+		return "", nil
 	}
+	s := "parameters:"
 	for i := range *p {
 		ps, err := (*p)[i].Render(2)
 		if err != nil {
@@ -57,13 +57,19 @@ type Parameter struct {
 	required    bool
 }
 
-func NewParameter(in, name string, value any) *Parameter {
+func NewParameter(in, name, description string, value any) *Parameter {
 	return &Parameter{
-		in:       in,
-		name:     name,
-		required: true,
-		schema:   NewSchema(value),
+		in:          in,
+		name:        name,
+		description: description,
+		required:    true,
+		schema:      NewSchema(value),
 	}
+}
+
+func (p *Parameter) Description(s string) *Parameter {
+	p.description = s
+	return p
 }
 
 func (p *Parameter) Render(n int) (string, error) {
@@ -76,11 +82,13 @@ func (p *Parameter) Render(n int) (string, error) {
 - in: %s
   name: %s
   required: %v
+  description: %s
   schema:
 %s`,
 		p.in,
 		p.name,
 		p.required,
+		p.description,
 		s,
 	)
 

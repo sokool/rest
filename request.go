@@ -12,25 +12,27 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/sokool/errors"
+	"github.com/sokool/rest/docs"
 )
 
 type Request[S Session] struct {
 	Session  S
 	Request  *http.Request
 	Response http.ResponseWriter
+	docs     *docs.Path
 }
 
 func NewRequest[S Session](s Sessions[S], w http.ResponseWriter, r *http.Request) (*Request[S], error) {
-	var x = &Request[S]{Request: r, Response: w}
 	var err error
-	if x.Session, err = s.Read(r); err != nil {
+	var req = &Request[S]{Request: r, Response: w}
+	if req.Session, err = s.Read(r); err != nil {
 		return nil, err
 	}
 
-	return x, nil
+	return req, nil
 }
 
-func (r *Request[S]) Body(to any) error {
+func (r *Request[S]) Decode(to any) error {
 	defer r.Request.Body.Close()
 	switch err := json.NewDecoder(r.Request.Body).Decode(to); {
 	case err == io.EOF:
@@ -44,6 +46,16 @@ func (r *Request[S]) Body(to any) error {
 }
 
 func (r *Request[S]) Param(name string, to ...any) (s string, err error) {
+	defer func() {
+		if r.docs == nil {
+			return
+		}
+		var v any = s
+		if len(to) > 0 {
+			v = to[0]
+		}
+		r.docs.Parameters().Path(name, v)
+	}()
 	if s = httprouter.ParamsFromContext(r.Request.Context()).ByName(name); s == "" {
 		return s, ErrValueNotFound
 	}
@@ -56,6 +68,16 @@ func (r *Request[S]) Param(name string, to ...any) (s string, err error) {
 }
 
 func (r *Request[S]) Query(name string, to ...any) (s string, err error) {
+	defer func() {
+		if r.docs == nil {
+			return
+		}
+		var v any = s
+		if len(to) > 0 {
+			v = to[0]
+		}
+		r.docs.Parameters().Query(name, "", v)
+	}()
 	if s = r.Request.URL.Query().Get(name); s == "" {
 		return s, ErrValueNotFound
 	}

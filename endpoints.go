@@ -37,11 +37,15 @@ func (s *Endpoints[S]) Path(name string, m ...Middleware) *Endpoints[S] {
 	}
 }
 
-func (s *Endpoints[S]) Handle(name, method string, e Endpoint[S], m ...Middleware) *Endpoints[S] {
+func (s *Endpoints[S]) Handle(n, method string, e Endpoint[S], m ...Middleware) *Endpoints[S] {
 	m = append(s.middleware, m...)
-	h := NewHandler[S](s.sessions, e).Apply(m...)
-	s.http.Handler(method, s.path+name, h)
-	s.docs.Path(method, s.path+name)
+	n = s.path + n
+	d := s.docs.Path(method, n)
+	h := NewHandler[S](s.sessions, e).
+		Doc(d).
+		Apply(m...)
+
+	s.http.Handler(method, n, h)
 	return s
 }
 

@@ -1,32 +1,31 @@
 package docs_test
 
 import (
-	"fmt"
+	"hash/fnv"
 	"testing"
 
 	"github.com/sokool/rest/docs"
 )
 
 func TestParameter_String(t *testing.T) {
-	type Filter struct {
-		ID      int    `json:"id"`
-		Name    string `json:"name" jsonschema:"title=the name,description=The name of a friend,example=joe,example=lucy,default=alex"`
-		Friends []int  `json:"friends,omitempty" jsonschema_description:"The list of IDs, omitted when empty"`
-		//BirthDate   time.Time   `json:"birth_date,omitempty" jsonschema:"oneof_required=date"`
-		//YearOfBirth string      `json:"year_of_birth,omitempty" jsonschema:"oneof_required=year"`
-		//Metadata    interface{} `json:"metadata,omitempty" jsonschema:"oneof_type=string;array"`
-		//FavColor    string      `json:"fav_color,omitempty" jsonschema:"enum=red,enum=green,enum=blue"`
+	p := docs.NewParameters()
+	p.Query("q", "some tricky text").Description("oh some tricky query param")
+	p.Cookie("age", 41)
+	p.Path("filter", true)
+	p.Header("X-Key", "Bearer abc")
+	s, err := p.Render(0)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	p := docs.
-		NewParameters().
-		Query("q", "some tricky text").
-		Cookie("age", 41).
-		Path("filter", true).
-		Header("X-Key", "Bearer abc")
-	fmt.Println(p.Render(6))
-	//fmt.Println(docs.NewPathParameter("filter", Filter{}).Render())
-	//fmt.Println(docs.NewPathParameter("product", "adf39875fa").Render())
-	//fmt.Println(docs.NewHeaderParameter("age", 38).Render())
+	if hash(s) != 1772388703 {
+		t.Fatalf("invalid string output")
+	}
 
+}
+
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }

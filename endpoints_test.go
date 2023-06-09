@@ -1,7 +1,6 @@
 package rest_test
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -39,8 +38,8 @@ func TestRouter_MiddlewareOrder(t *testing.T) {
 	cases := []_case{
 		{
 			"without",
-			r.Path("/a").Handle("", "GET", h("hello")),
-			"GET", "/a?test=abc",
+			r.Path("/a/:one/:two/").Handle("", "GET", h("hello")),
+			"GET", "/a/hello/world/?test=abc",
 			"hello",
 		},
 		{
@@ -73,6 +72,4 @@ func TestRouter_MiddlewareOrder(t *testing.T) {
 			}
 		})
 	}
-
-	fmt.Println(r)
 }

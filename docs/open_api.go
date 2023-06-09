@@ -131,3 +131,5 @@ func (e *Path) String() string {
 	s += fmt.Sprintf("          description: \"undefined\"\n")
 	return s
 }
+
+type Paths []*Path
